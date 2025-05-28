@@ -1,0 +1,30 @@
+{
+    "name": "OpenFlap: Puya",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "."
+    },
+    "remoteUser": "openflap",
+    "containerUser": "openflap",
+    "extensions": [
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "ms-vscode.vscode-serial-monitor",
+        "streetsidesoftware.code-spell-checker",
+        "marus25.cortex-debug",
+        "jkearins.action-buttons-ext",
+    ],
+    "runArgs": [
+        "--privileged",
+        "--hostname=puya",
+        "--name=openflap_puya"
+    ],
+    "mounts": [
+        "source=${localEnv:HOME}/.bashrc,target=/home/openflap/.bashrc,type=bind,consistency=cached",
+        "source=/dev,target=/dev,type=bind,consistency=cached",
+        "source=/run/udev,target=/run/udev,type=bind,consistency=cached",
+        "source=/etc/udev/rules.d,target=/etc/udev/rules.d,type=bind,consistency=cached",
+        "source=${localWorkspaceFolder}/.devcontainer/puya/.vscode,target=${containerWorkspaceFolder}/.vscode,type=bind,consistency=cached",
+    ],
+    "postStartCommand": "/workspaces/OpenFlap/.devcontainer/bashrc_addons_add.sh"
+}
