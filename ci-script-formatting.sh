@@ -35,11 +35,7 @@ BASE_DIR=$(git rev-parse --show-toplevel)
 # List of ignored patterns
 ignored_patterns=(
     'build'
-    'software/module/lib/puya_libs'
-    'software/controller_old'
-    'software/controller/managed_components'
-    'software/controller/components/u8g2*'
-    'software/controller/components/networking/include/networking_default_config.h'
+    'software/lib/puya_libs'
 )
 
 # Construct the find command with ignored patterns

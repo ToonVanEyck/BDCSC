@@ -5,9 +5,19 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DEBUG_IO_TERM_KEYWORD_MAX 10
+
 static bool format_ended_in_newline = true;
 static log_lvl_t active_log_lvl     = LOG_DISBALED;
 static log_lvl_t prev_log_lvl       = LOG_DISBALED;
+
+typedef struct {
+    const char *keyword;
+    debug_io_term_callback_t callback;
+    void *arg; // Additional argument for the callback, can be used for context
+} debug_io_term_entry_t;
+
+static debug_io_term_entry_t term_keywords[DEBUG_IO_TERM_KEYWORD_MAX] = {0};
 
 static inline bool format_end_in_newline(const char *fmt)
 {
@@ -97,4 +107,61 @@ log_lvl_t debug_io_log_get_level(void)
 void debug_io_log_restore(void)
 {
     active_log_lvl = prev_log_lvl;
+}
+
+void debug_io_term_process(void)
+{
+    static char input_buffer[256] = {0};
+    static unsigned input_index   = 0;
+
+    int c = SEGGER_RTT_GetKey();
+
+    if (c <= 0) {
+        return; // No input available
+    } else if (c == '\n') {
+        input_buffer[input_index] = '\0'; // Null-terminate the string
+        input_index               = 0;    // Reset index for next input
+        char *space_pos           = strchr(input_buffer, ' ');
+        size_t keyword_len        = space_pos ? (size_t)(space_pos - input_buffer) : strlen(input_buffer);
+        const char *arg_str       = space_pos ? space_pos + 1 : NULL;
+
+        for (int i = 0; i < DEBUG_IO_TERM_KEYWORD_MAX; i++) {
+            if (term_keywords[i].keyword != NULL && strncmp(input_buffer, term_keywords[i].keyword, keyword_len) == 0 &&
+                term_keywords[i].keyword[keyword_len] == '\0') {
+                term_keywords[i].callback(arg_str, term_keywords[i].arg);
+                return;
+            }
+        }
+        debug_io_log_warn("Unknown command: %s\n", input_buffer);
+    } else if (c == '\b' || c == 0x7F) { // Handle backspace
+        if (input_index > 0) {
+            input_index--;                    // Move back in the buffer
+            input_buffer[input_index] = '\0'; // Null-terminate the string
+            SEGGER_RTT_PutChar(0, '\b');      // Send backspace to terminal
+            SEGGER_RTT_PutChar(0, ' ');       // Send space to terminal
+            SEGGER_RTT_PutChar(0, '\b');      // Send backspace to terminal
+        }
+    } else if (c == 0x1B) { // Handle escape sequence
+        debug_io_log_warn("Escape sequence detected, command ignored.\n");
+        input_index = 0; // Reset index to prevent overflow
+        return;
+    } else if (input_index < sizeof(input_buffer) - 1) {
+        input_buffer[input_index++] = c; // Store character in buffer
+    } else {
+        debug_io_log_error("Input buffer overflow, command ignored.\n");
+        input_index = 0; // Reset index to prevent overflow
+        return;
+    }
+}
+
+void debug_io_term_register_keyword(const char *keyword, debug_io_term_callback_t cb, void *arg)
+{
+    for (int i = 0; i < DEBUG_IO_TERM_KEYWORD_MAX; i++) {
+        if (term_keywords[i].keyword == NULL) {
+            term_keywords[i].keyword  = keyword;
+            term_keywords[i].callback = cb;
+            term_keywords[i].arg      = arg;
+            return;
+        }
+    }
 }

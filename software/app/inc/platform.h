@@ -49,7 +49,7 @@
  * @{
  */
 #define MOTOR_GPIO_PORT (GPIOA)                   /**< Motor GPIO port. */
-#define MOTOR_GPIO_PINS (GPIO_PIN_6 | GPIO_PIN_7) /**< Motor GPIO pins. */
+#define MOTOR_GPIO_PINS (GPIO_PIN_0 | GPIO_PIN_1) /**< Motor GPIO pins. */
 /**
  * @}
  */
@@ -69,9 +69,13 @@
  * \defgroup DEBUG pin definitions.
  * @{
  */
-#define DEBUG_GPIO_1_PIN (GPIO_PIN_0) /**< DEBUG 1 Pin. */
-#define DEBUG_GPIO_2_PIN (GPIO_PIN_1) /**< DEBUG 2 Pin. */
-#define DEBUG_GPIO_PORT  (GPIOF)      /**< DEBUG Port. */
+#define DEBUG_GPIO_1_PIN    (GPIO_PIN_1) /**< DEBUG 1 Pin. */
+#define DEBUG_GPIO_2_PIN    (GPIO_PIN_0) /**< DEBUG 2 Pin. */
+#define DEBUG_GPIO_3_PIN    (GPIO_PIN_6) /**< DEBUG 3 Pin. */
+#define DEBUG_GPIO_4_PIN    (GPIO_PIN_7) /**< DEBUG 6 Pin. */
+#define DEBUG_GPIO_1_2_PORT (GPIOF)      /**< DEBUG Port. */
+#define DEBUG_GPIO_3_4_PORT (GPIOB)      /**< DEBUG Port. */
+
 /**
  * @}
  */

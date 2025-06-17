@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <export version="E">
   <design>
-    <source>/workspaces/OpenFlap/hardware/module/side_panel/src/side_panel.kicad_sch</source>
+    <source>/workspaces/BDCSC/hardware/module/side_panel/src/side_panel.kicad_sch</source>
     <date>2025-04-28T21:11:13+0000</date>
     <tool>Eeschema 8.0.6+1</tool>
     <textvar name="DATE">2025-04-28</textvar>
@@ -9,12 +9,12 @@
     <sheet number="1" name="/" tstamps="/">
       <title_block>
         <title>Side Panel</title>
-        <company>OpenFlap</company>
+        <company>BDCSC</company>
         <rev>6.0.0</rev>
         <date>2025-04-28</date>
         <source>side_panel.kicad_sch</source>
         <comment number="1" value="Commit: v0.0.0-unstable-158-g0a6b791-dirty"/>
-        <comment number="2" value="Repo: github.com/ToonVanEyck/OpenFlap"/>
+        <comment number="2" value="Repo: github.com/ToonVanEyck/BDCSC"/>
         <comment number="3" value="Designer: Toon Van Eyck"/>
         <comment number="4" value=""/>
         <comment number="5" value=""/>
@@ -946,7 +946,7 @@
       <uri>/usr/share/kicad/symbols/Device.kicad_sym</uri>
     </library>
     <library logical="L9110S">
-      <uri>/workspaces/OpenFlap/hardware/module/side_panel/src/../../../resources/L9110S.kicad_sym</uri>
+      <uri>/workspaces/BDCSC/hardware/module/side_panel/src/../../../resources/L9110S.kicad_sym</uri>
     </library>
     <library logical="Mechanical">
       <uri>/usr/share/kicad/symbols/Mechanical.kicad_sym</uri>
@@ -961,7 +961,7 @@
       <uri>/usr/share/kicad/symbols/Sensor_Proximity.kicad_sym</uri>
     </library>
     <library logical="puya">
-      <uri>/workspaces/OpenFlap/hardware/module/side_panel/src/../../../resources/Puya.kicad_sym</uri>
+      <uri>/workspaces/BDCSC/hardware/module/side_panel/src/../../../resources/Puya.kicad_sym</uri>
     </library>
   </libraries>
   <nets>

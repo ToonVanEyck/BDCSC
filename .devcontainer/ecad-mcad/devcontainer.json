@@ -1,20 +1,20 @@
 {
-    "name": "OpenFlap: ecad-mcad",
+    "name": "BDCSC: ecad-mcad",
     "build": {
         "dockerfile": "Dockerfile",
         "context": "."
     },
-    "remoteUser": "openflap",
-    "containerUser": "openflap",
+    "remoteUser": "BDCSC",
+    "containerUser": "BDCSC",
     "runArgs": [
         "--privileged",
         "--hostname=ecad-mcad",
-        "--name=openflap_ecad_mcad"
+        "--name=BDCSC_ecad_mcad"
     ],
     "mounts": [
-        "source=${localEnv:HOME}/.bashrc,target=/home/openflap/.bashrc,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.bashrc,target=/home/BDCSC/.bashrc,type=bind,consistency=cached",
     ],
-    "postStartCommand": "/workspaces/OpenFlap/.devcontainer/bashrc_addons_add.sh",
+    "postStartCommand": "/workspaces/BDCSC/.devcontainer/bashrc_addons_add.sh",
     "customizations": {
         "vscode": {
             "extensions": [

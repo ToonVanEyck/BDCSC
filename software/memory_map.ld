@@ -29,7 +29,7 @@ MEMORY
   FLASH_BTL (rx) : ORIGIN = 0x08000000, LENGTH = 4K  /* Bootloader */
   FLASH_APP (rx) : ORIGIN = 0x08001000, LENGTH = 28K - 4 /* [ 64K (total) - 4K (nvs) - 4K bootloader ] / 2 = 28K - 4 (Checksum) */ 
   FLASH_CS(r)    : ORIGIN = 0x08007FFC, LENGTH = 4  /* Checksum sector */
-  FLASH_NVS (r)  : ORIGIN = 0x0800F000, LENGTH = 4K  /* Flash sector used to store OpenFlap configuration. */
+  FLASH_NVS (r)  : ORIGIN = 0x0800F000, LENGTH = 4K  /* Flash sector used to store BDCSC configuration. */
 }
 
 __FLASH_BTL_START__  = ORIGIN(FLASH_BTL);

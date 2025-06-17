@@ -1,10 +1,10 @@
 # FROM ghcr.io/inti-cmnb/kicad8_auto:1.8.0
 FROM ghcr.io/inti-cmnb/kicad_auto_full:dev_k8_1.8.3-6506638_k8.0.6_d_sid_b3.5.1
 
-ARG USER_NAME=openflap
+ARG USER_NAME=BDCSC
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
-ARG CI_USER_NAME=openflap_ci
+ARG CI_USER_NAME=BDCSC_ci
 ARG CI_USER_UID=1001
 
 # Install additional packages

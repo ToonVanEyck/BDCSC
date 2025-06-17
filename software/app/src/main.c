@@ -1,24 +1,7 @@
 /* Includes ------------------------------------------------------------------*/
-// #include "chain_comm.h"
-#include "config.h"
-#include "openflap.h"
-#include "property_handlers.h"
-#include "uart_driver.h"
+#include "bdcsc.h"
 
 /* Private define ------------------------------------------------------------*/
-
-/** Convert a milliseconds value into a counter value for the IR/Encoder timer. */
-#define IR_TIMER_TICKS_FROM_MS(ms) ((ms) * 10)
-/** Convert a microsecond value into a counter value for the IR/Encoder timer. */
-#define IR_TIMER_TICKS_FROM_US(us) ((us) / 100)
-
-/** The period of the encoder readings when the motor is idle. */
-#define IR_IDLE_PERIOD_MS IR_TIMER_TICKS_FROM_MS(50)
-/** The period of the encoder readings when the motor is active. */
-#define IR_ACTIVE_PERIOD_MS IR_TIMER_TICKS_FROM_MS(1)
-
-/** The IR sensor will illuminate the encoder wheel for this time in microseconds before starting the conversion */
-#define IR_ILLUMINATE_TIME_US IR_TIMER_TICKS_FROM_US(200)
 
 #ifndef VERSION
 #define VERSION "not found"
@@ -29,20 +12,15 @@ ADC_HandleTypeDef AdcHandle;
 ADC_ChannelConfTypeDef sConfig;
 uint32_t aADCxConvertedData[ENCODER_CHANNEL_CNT] = {0};
 
-TIM_HandleTypeDef Tim1Handle; // ADC/IR timer
-
+TIM_HandleTypeDef Tim1Handle;     // ADC/IR timer
+TIM_HandleTypeDef encoderHandle;  // Encoder timer
 TIM_HandleTypeDef motorPwmHandle; // PWM
 
-UART_HandleTypeDef UartHandle;
-
-static openflap_ctx_t openflap_ctx = {0};
-
-#define RB_BUFF_SIZE 128
-static uint8_t uart_rx_rb_buff[RB_BUFF_SIZE];
-static uint8_t uart_tx_rb_buff[RB_BUFF_SIZE];
-static uart_driver_ctx_t uart_driver;
-static bool debug_mode        = false;
-static bool print_encoder_adc = false;
+typedef struct {
+    bool enable;       /**< Enable motor. */
+    uint8_t speed;     /**< Motor speed (0-255). */
+    bool direction_cw; /**< Motor direction: true for clockwise, false for counter-clockwise. */
+} motor_t;
 
 /* Private macro -------------------------------------------------------------*/
 
@@ -53,119 +31,58 @@ static void APP_TimerInit(void);
 static void APP_PwmInit(void);
 static void APP_AdcConfig(void);
 static void APP_DmaInit(void);
-static void APP_UartInit(void);
+static void APP_EncoderInit(void);
+
+void motor_update(const motor_t *motor);
+
+/* Debug terminal functions. */
+void debug_term_motor_toggle(const char *input, void *arg);
+void debug_term_motor_set_speed(const char *input, void *arg);
+void debug_term_motor_set_direction(const char *input, void *arg);
+void debug_term_encoder_toggle(const char *input, void *arg);
+
+/* Motor stuff */
+static motor_t debug_motor = {0};
+
+/* Debug GPIO */
+static bool debug_gpio[4] = {false, false, false, false};
+
+/* Quad encoder */
+static uint16_t prev_encoder_value = 0;
+static bool enable_encoder         = false;
 
 int main(void)
 {
     HAL_Init();
     BSP_HSI_24MHzClockConfig();
 
-    configLoad(&openflap_ctx.config);
-
     debug_io_init(LOG_LVL_DEBUG);
 
     APP_GpioConfig();
-    APP_DmaInit();
-    APP_AdcConfig();
-    APP_UartInit();
+    // APP_DmaInit();
+    // APP_AdcConfig();
     APP_PwmInit();
-    APP_TimerInit();
+    APP_EncoderInit();
+    motor_update(&debug_motor);
+    // APP_TimerInit();
 
-    uart_driver_init(&uart_driver, &UartHandle, uart_rx_rb_buff, RB_BUFF_SIZE, uart_tx_rb_buff, RB_BUFF_SIZE);
+    debug_io_term_register_keyword("m", debug_term_motor_toggle, &debug_motor);
+    debug_io_term_register_keyword("ms", debug_term_motor_set_speed, &debug_motor);
+    debug_io_term_register_keyword("md", debug_term_motor_set_direction, &debug_motor);
+    debug_io_term_register_keyword("enc", debug_term_encoder_toggle, NULL);
 
-    chain_comm_init(&openflap_ctx.chain_ctx, &uart_driver);
-    property_handlers_init(&openflap_ctx);
-
-    debug_io_log_info("OpenFlap module has started!\n");
+    debug_io_log_info("BDCSC dev board\n");
     debug_io_log_info("Version: %s\n", GIT_VERSION);
     debug_io_log_info("Compilation Date: %s %s\n", __DATE__, __TIME__);
 
-    /* Start homing sequence at maximum speed. */
-    openflap_ctx.flap_position = 0;          /* Invalid position. */
-    openflap_ctx.flap_setpoint = 0;          /* Setpoint zero means, go to the first character in the character map. */
-    openflap_ctx.flap_distance = SYMBOL_CNT; /* Speed is based on distance between setpoint and position. We initialize
-                                                it with the maximum value. */
-
-    uint8_t new_position = 0;
-    int rtt_key;
-    int16_t speed = 0;
     while (1) {
 
-        /* Receive commands from debug_io. */
-        rtt_key = debug_io_get();
-        if (rtt_key > 0) {
-            debug_io_log_debug("received command:  %c\n", (char)rtt_key);
-            switch (rtt_key) {
-                case '\n':
-                    configPrint(&openflap_ctx.config);
-                    break;
-                case 'a':
-                    print_encoder_adc = !print_encoder_adc;
-                    debug_io_log_info("%s Encoder ADC\n", print_encoder_adc ? "Printing" : "Not printing");
-                    break;
-                case 'd':
-                    debug_mode = !debug_mode;
-                    debug_io_log_info("%s Debug Mode\n", debug_mode ? "Entering" : "Exiting");
-                    break;
-                case '8':
-                    speed += 5;
-                    debug_io_log_info("Speed: %d\n", speed);
-                    break;
-                case '2':
-                    speed -= 5;
-                    debug_io_log_info("Speed: %d\n", speed);
-                    break;
-            }
-        }
-
-        /* Run chain comm. */
-        chain_comm(&openflap_ctx.chain_ctx);
-
-        /* Set debug pins based on flap position. */
-        HAL_GPIO_WritePin(DEBUG_GPIO_PORT, DEBUG_GPIO_1_PIN, flapPostionGet(&openflap_ctx) & 1);
-        HAL_GPIO_WritePin(DEBUG_GPIO_PORT, DEBUG_GPIO_2_PIN, flapPostionGet(&openflap_ctx) == 0);
-
-        /* Print position. */
-        if (new_position != flapPostionGet(&openflap_ctx)) {
-            new_position                              = flapPostionGet(&openflap_ctx);
-            static uint32_t last_position_change_time = 0;
-            uint32_t current_time                     = HAL_GetTick();
-            uint32_t time_since_last_change           = current_time - last_position_change_time;
-            last_position_change_time                 = current_time;
-            debug_io_log_info("Pos: %d  %s (%ld ms)\n", flapPostionGet(&openflap_ctx),
-                              &openflap_ctx.config.symbol_set[flapPostionGet(&openflap_ctx)], time_since_last_change);
-        }
-
-        if (!debug_mode) {
-            /* Set the motor speed based on the distance between the current and target flap. */
-            setMotorFromDistance(&openflap_ctx);
-            // motorIdle();
-        } else {
-            if (speed < 0) {
-                motorReverse(-speed);
-            } else if (speed > 0) {
-                motorForward(speed);
-            } else {
-                motorBrake();
-            }
-        }
-
-        /* Communication status. */
-        updateCommsState(&openflap_ctx);
-
-        /* Motor status. */
-        updateMotorState(&openflap_ctx);
-
-        /* Idle logic. */
-        if (!openflap_ctx.motor_active && !openflap_ctx.comms_active) {
-            if (openflap_ctx.store_config) {
-                openflap_ctx.store_config = false;
-                configStore(&openflap_ctx.config);
-                debug_io_log_info(0, "Config stored!\n");
-            }
-            if (openflap_ctx.reboot) {
-                debug_io_log_info(0, "Rebooting module!\n");
-                NVIC_SystemReset();
+        debug_io_term_process();
+        uint16_t encoder_count = __HAL_TIM_GET_COUNTER(&encoderHandle);
+        if (encoder_count != prev_encoder_value) {
+            prev_encoder_value = encoder_count;
+            if (enable_encoder) {
+                debug_io_log_info("ENC: %u\n", encoder_count);
             }
         }
     }
@@ -179,26 +96,32 @@ static void APP_GpioConfig(void)
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOF_CLK_ENABLE();
 
-    /* Configure column-end detection pin. */
-    GPIO_InitStruct.Pin   = COLEND_GPIO_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(COLEND_GPIO_PORT, &GPIO_InitStruct);
+    // /* Configure column-end detection pin. */
+    // GPIO_InitStruct.Pin   = COLEND_GPIO_PIN;
+    // GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
+    // GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    // GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    // HAL_GPIO_Init(COLEND_GPIO_PORT, &GPIO_InitStruct);
 
-    /* Configure IR LED */
-    GPIO_InitStruct.Pin   = ENCODER_LED_GPIO_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(ENCODER_LED_GPIO_PORT, &GPIO_InitStruct);
+    // /* Configure IR LED */
+    // GPIO_InitStruct.Pin   = ENCODER_LED_GPIO_PIN;
+    // GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    // GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    // GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    // HAL_GPIO_Init(ENCODER_LED_GPIO_PORT, &GPIO_InitStruct);
 
     /* Configure debug pins, these pins can be used for pin wiggling during development. */
     GPIO_InitStruct.Pin   = DEBUG_GPIO_1_PIN | DEBUG_GPIO_2_PIN;
     GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull  = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(DEBUG_GPIO_PORT, &GPIO_InitStruct);
+    HAL_GPIO_Init(DEBUG_GPIO_1_2_PORT, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin   = DEBUG_GPIO_3_PIN | DEBUG_GPIO_4_PIN;
+    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull  = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(DEBUG_GPIO_3_4_PORT, &GPIO_InitStruct);
 }
 
 static void APP_AdcConfig(void)
@@ -240,35 +163,37 @@ static void APP_AdcConfig(void)
 
 static void APP_TimerInit(void)
 {
-    /* (240 * 10) / 24Mhz = 100us */
-    Tim1Handle.Instance               = TIM1;
-    Tim1Handle.Init.Period            = 10 - 1;
-    Tim1Handle.Init.Prescaler         = 240 - 1;
-    Tim1Handle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
-    Tim1Handle.Init.CounterMode       = TIM_COUNTERMODE_UP;
-    Tim1Handle.Init.RepetitionCounter = 0;
-    Tim1Handle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-    if (HAL_TIM_Base_Init(&Tim1Handle) != HAL_OK) {
-        APP_ErrorHandler();
-    }
+    // /* (240 * 10) / 24Mhz = 100us */
+    // Tim1Handle.Instance               = TIM1;
+    // Tim1Handle.Init.Period            = 10 - 1;
+    // Tim1Handle.Init.Prescaler         = 240 - 1;
+    // Tim1Handle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
+    // Tim1Handle.Init.CounterMode       = TIM_COUNTERMODE_UP;
+    // Tim1Handle.Init.RepetitionCounter = 0;
+    // Tim1Handle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    // if (HAL_TIM_Base_Init(&Tim1Handle) != HAL_OK) {
+    //     APP_ErrorHandler();
+    // }
 
-    TIM_MasterConfigTypeDef sMasterConfig;
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-    sMasterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
-    HAL_TIMEx_MasterConfigSynchronization(&Tim1Handle, &sMasterConfig);
-    if (HAL_TIM_Base_Start_IT(&Tim1Handle) != HAL_OK) {
-        APP_ErrorHandler();
-    }
+    // TIM_MasterConfigTypeDef sMasterConfig;
+    // sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    // sMasterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
+    // HAL_TIMEx_MasterConfigSynchronization(&Tim1Handle, &sMasterConfig);
+    // if (HAL_TIM_Base_Start_IT(&Tim1Handle) != HAL_OK) {
+    //     APP_ErrorHandler();
+    // }
 }
 
 static void APP_PwmInit(void)
 {
-    /* 24MHz / ( 255 x 466 x 2 ) = +/- 100Hz */
-    motorPwmHandle.Instance           = TIM3;
+    /* 24MHz / ( 255 x 466 x 2 ) = +/- 200Hz */
+    motorPwmHandle.Instance           = TIM1;
     motorPwmHandle.Init.Period        = 255 - 1;
-    motorPwmHandle.Init.Prescaler     = 466 - 1;
+    motorPwmHandle.Init.Prescaler     = 470 - 1;
     motorPwmHandle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV2;
     motorPwmHandle.Init.CounterMode   = TIM_COUNTERMODE_UP;
+    // motorPwmHandle.Init.RepetitionCounter = 0;
+    // motorPwmHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     if (HAL_TIM_PWM_Init(&motorPwmHandle) != HAL_OK) {
         APP_ErrorHandler();
     }
@@ -285,12 +210,40 @@ static void APP_PwmInit(void)
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
 
     // Configure channel 1
-    HAL_TIM_PWM_ConfigChannel(&motorPwmHandle, &sConfigOC, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&motorPwmHandle, TIM_CHANNEL_1);
+    HAL_TIM_PWM_ConfigChannel(&motorPwmHandle, &sConfigOC, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&motorPwmHandle, TIM_CHANNEL_3);
 
     // Configure channel 2
-    HAL_TIM_PWM_ConfigChannel(&motorPwmHandle, &sConfigOC, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Start(&motorPwmHandle, TIM_CHANNEL_2);
+    HAL_TIM_PWM_ConfigChannel(&motorPwmHandle, &sConfigOC, TIM_CHANNEL_4);
+    HAL_TIM_PWM_Start(&motorPwmHandle, TIM_CHANNEL_4);
+}
+
+void APP_EncoderInit(void)
+{
+    encoderHandle.Instance               = TIM3;
+    encoderHandle.Init.Prescaler         = 0;
+    encoderHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
+    encoderHandle.Init.Period            = 0xFFFF;
+    encoderHandle.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
+    encoderHandle.Init.RepetitionCounter = 0;
+    encoderHandle.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+
+    TIM_Encoder_InitTypeDef sConfig = {0};
+    sConfig.EncoderMode             = TIM_ENCODERMODE_TI12;
+    sConfig.IC1Polarity             = TIM_ICPOLARITY_RISING;
+    sConfig.IC1Selection            = TIM_ICSELECTION_DIRECTTI;
+    sConfig.IC1Prescaler            = TIM_ICPSC_DIV1;
+    sConfig.IC1Filter               = 0;
+    sConfig.IC2Polarity             = TIM_ICPOLARITY_RISING;
+    sConfig.IC2Selection            = TIM_ICSELECTION_DIRECTTI;
+    sConfig.IC2Prescaler            = TIM_ICPSC_DIV1;
+    sConfig.IC2Filter               = 0;
+
+    if (HAL_TIM_Encoder_Init(&encoderHandle, &sConfig) != HAL_OK) {
+        APP_ErrorHandler();
+    }
+
+    HAL_TIM_Encoder_Start(&encoderHandle, TIM_CHANNEL_ALL);
 }
 
 static void APP_DmaInit(void)
@@ -299,67 +252,20 @@ static void APP_DmaInit(void)
     HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
-static void APP_UartInit(void)
-{
-    UartHandle.Instance        = USART1;
-    UartHandle.Init.BaudRate   = 115200;
-    UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
-    UartHandle.Init.StopBits   = UART_STOPBITS_1;
-    UartHandle.Init.Parity     = UART_PARITY_NONE;
-    UartHandle.Init.HwFlowCtl  = UART_HWCONTROL_NONE;
-    UartHandle.Init.Mode       = UART_MODE_TX_RX;
-
-    if (HAL_UART_Init(&UartHandle) != HAL_OK) {
-        APP_ErrorHandler();
-    }
-}
-
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     /* Disable IR led. */
     // HAL_GPIO_WritePin(ENCODER_LED_GPIO_PORT, ENCODER_LED_GPIO_PIN, GPIO_PIN_RESET);
 
-    if (print_encoder_adc) {
+    if (false) {
         debug_io_log_debug("ABZ: %04ld %04ld %04ld\n", aADCxConvertedData[ENCODER_CHANNEL_A],
                            aADCxConvertedData[ENCODER_CHANNEL_B], aADCxConvertedData[ENCODER_CHANNEL_Z]);
     }
-
-    /* Update encoder position. */
-    encoderPositionUpdate(&openflap_ctx, aADCxConvertedData);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM1) {
-        openflap_ctx.ir_tick_cnt++;
-        uint16_t ir_period = (debug_mode || openflap_ctx.motor_active) ? IR_ACTIVE_PERIOD_MS : IR_IDLE_PERIOD_MS;
-        /* Start ADC when IR led's have been on for 200us. */
-        if (openflap_ctx.ir_tick_cnt == IR_ILLUMINATE_TIME_US) {
-            if (HAL_ADC_Start_DMA(&AdcHandle, aADCxConvertedData, ENCODER_CHANNEL_CNT) != HAL_OK) {
-                APP_ErrorHandler();
-            }
-
-            /* Power IR led's. */
-        } else if (openflap_ctx.ir_tick_cnt >= ir_period) {
-            openflap_ctx.ir_tick_cnt = 0;
-            HAL_GPIO_WritePin(ENCODER_LED_GPIO_PORT, ENCODER_LED_GPIO_PIN, GPIO_PIN_SET);
-        }
-    }
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == USART1) {
-        if (huart->ErrorCode == HAL_UART_ERROR_NONE) {
-            uart_driver_rx_isr(&uart_driver);
-        }
-    }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == USART1) {
-        uart_driver_ctx_tx_isr(&uart_driver);
     }
 }
 
@@ -367,4 +273,62 @@ void APP_ErrorHandler(void)
 {
     while (1)
         ;
+}
+
+void motor_update(const motor_t *motor)
+{
+    if (motor->enable) {
+        if (motor->direction_cw) {
+            __HAL_TIM_SET_COMPARE(&motorPwmHandle, TIM_CHANNEL_3, 0xff - motor->speed);
+            __HAL_TIM_SET_COMPARE(&motorPwmHandle, TIM_CHANNEL_4, 0xff);
+        } else {
+            __HAL_TIM_SET_COMPARE(&motorPwmHandle, TIM_CHANNEL_3, 0xff);
+            __HAL_TIM_SET_COMPARE(&motorPwmHandle, TIM_CHANNEL_4, 0xff - motor->speed);
+        }
+    } else {
+        __HAL_TIM_SET_COMPARE(&motorPwmHandle, TIM_CHANNEL_3, 0);
+        __HAL_TIM_SET_COMPARE(&motorPwmHandle, TIM_CHANNEL_4, 0);
+    }
+}
+
+void debug_term_motor_toggle(const char *input, void *arg)
+{
+    motor_t *motor = (motor_t *)arg;
+    motor->enable  = !motor->enable;
+    debug_io_log_info("Motor: %s\n", motor->enable ? "enabled" : "disabled");
+    motor_update(motor);
+}
+
+void debug_term_motor_set_speed(const char *input, void *arg)
+{
+    motor_t *motor = (motor_t *)arg;
+    int speed      = atoi(input);
+    if (speed < 0 || speed > 255) {
+        debug_io_log_info("Invalid speed value. Must be between 0 and 255.\n");
+        return;
+    }
+    motor->speed = (uint8_t)speed;
+    debug_io_log_info("Motor speed set to: %u\n", motor->speed);
+    motor_update(motor);
+}
+
+void debug_term_motor_set_direction(const char *input, void *arg)
+{
+    motor_t *motor = (motor_t *)arg;
+    if (strcmp(input, "cw") == 0) {
+        motor->direction_cw = true;
+        debug_io_log_info("Motor direction set to: CW\n");
+    } else if (strcmp(input, "ccw") == 0) {
+        motor->direction_cw = false;
+        debug_io_log_info("Motor direction set to: CCW\n");
+    } else {
+        debug_io_log_info("Invalid direction. Use 'cw' or 'ccw'.\n");
+    }
+    motor_update(motor);
+}
+
+void debug_term_encoder_toggle(const char *input, void *arg)
+{
+    enable_encoder = !enable_encoder;
+    debug_io_log_info("Encoder: %s\n", enable_encoder ? "enabled" : "disabled");
 }

@@ -8,7 +8,7 @@
 
 #define CRC_VALID (0)
 
-static openflap_config_t config;
+static nvs_config_t config;
 
 typedef struct vector_table_tag {
     uint32_t initial_stack_pointer;

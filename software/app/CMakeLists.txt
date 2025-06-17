@@ -3,11 +3,9 @@ add_executable(${App}
     src/py32f0xx_it.c 
     src/py32f0xx_hal_msp.c 
     src/main.c 
-    src/chain_comm.c
-    src/property_handlers.c
-    src/openflap.c
-    src/default_config.c
+    src/bdcsc.c
     src/checksum.c
+    src/default_config.c
 )
 
 # Add custom command to touch main.c to force recompilation to update date and time
@@ -31,11 +29,10 @@ target_compile_definitions(${App} PUBLIC GIT_VERSION="${GIT_VERSION}")
 add_dependencies(${App} compile_time)
 
 target_compile_definitions(${App} PUBLIC
-    # CHAIN_COMM_DEBUG=1          # Print debug info for chain communication.
     SET_DEFAULT_CONFIG          # provide a default configuration in the binary.
 )
 
-target_link_libraries(${App} PUBLIC debug_io config flash config chain_comm_abi uart_driver) 
+target_link_libraries(${App} PUBLIC debug_io config flash config) 
 target_link_libraries(${App} PUBLIC $<TARGET_OBJECTS:PuyaBSP>)
 target_include_directories(${App} PRIVATE $<TARGET_PROPERTY:PuyaBSP,INTERFACE_INCLUDE_DIRECTORIES>)
 

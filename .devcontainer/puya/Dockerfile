@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/devcontainers/base:1-ubuntu-22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG ORIGINAL_USER=vscode
-ARG NEW_USER=openflap
+ARG NEW_USER=BDCSC
 
 # Install additional packages
 RUN apt update && apt install -y \
@@ -19,7 +19,7 @@ RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.d
 # Install figlet font
 RUN cd /usr/share/figlet && wget https://raw.githubusercontent.com/xero/figlet-fonts/master/3d.flf
 
-# Change user name from vscode to openflap
+# Change user name from vscode to BDCSC
 RUN usermod -l ${NEW_USER} ${ORIGINAL_USER} && \
     groupmod -n ${NEW_USER} ${ORIGINAL_USER} && \
     usermod -d /home/${NEW_USER} -m ${NEW_USER}

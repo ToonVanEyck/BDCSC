@@ -14,22 +14,6 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(DEBUG_IO_RTT_BACKEND 1 CACHE BOOL "Use RTT as debug input output backend")
 
-# Include the external chain_comm_abi library
-include(ExternalProject)
-ExternalProject_Add(common_chain_comm_abi
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../common/chain_comm_abi
-    BINARY_DIR ${CMAKE_BINARY_DIR}/chain_comm_abi
-    CMAKE_ARGS 
-        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} 
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    INSTALL_COMMAND ""
-    UPDATE_COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/chain_comm_abi/timestamp
-)
-add_library(chain_comm_abi STATIC IMPORTED)
-set_property(TARGET chain_comm_abi PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/chain_comm_abi/libchain_comm_abi.a)
-set_property(TARGET chain_comm_abi PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/../common/chain_comm_abi/include)
-add_dependencies(chain_comm_abi common_chain_comm_abi)
-
 # Include the libraries
 add_subdirectory(lib)
 

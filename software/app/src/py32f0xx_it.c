@@ -34,7 +34,6 @@
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef AdcHandle;
 extern TIM_HandleTypeDef Tim1Handle;
-extern UART_HandleTypeDef UartHandle;
 
 /******************************************************************************/
 /*          Cortex-M0+ Processor Interruption and Exception Handlers          */
@@ -89,19 +88,14 @@ void ADC_COMP_IRQHandler(void)
     HAL_ADC_IRQHandler(&AdcHandle);
 }
 
-void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
-{
-    HAL_TIM_IRQHandler(&Tim1Handle);
-}
+// void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
+// {
+//     HAL_TIM_IRQHandler(&Tim1Handle);
+// }
 
 void DMA1_Channel1_IRQHandler(void)
 {
     HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
-}
-
-void USART1_IRQHandler(void)
-{
-    HAL_UART_IRQHandler(&UartHandle);
 }
 
 /************************ (C) COPYRIGHT Puya *****END OF FILE******************/
