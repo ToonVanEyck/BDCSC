@@ -26,6 +26,19 @@ typedef void (*debug_io_term_callback_t)(const char *input, void *arg);
 void debug_io_init(log_lvl_t log_lvl);
 
 /**
+ * \brief Initialize a scope.
+ *
+ * Supported formats:
+ * b : 8 bit bitfield (1 byte)
+ * f : float (4 bytes)
+ * i : integer (1, 2 or 4 bytes)
+ * u : unsigned integer (1, 2 or 4 bytes)
+ *
+ * \note for unsigned or signed integers, use i1, i2, i4 or u1, u2, u4 to specify the size.
+ */
+void debug_io_scope_init(char *scope_fomat);
+
+/**
  * \brief Get a character from the debug IO.
  *
  * \return Negative if no character is available, otherwise returns the character.
@@ -103,3 +116,8 @@ void debug_io_term_process(void);
  * @param[in] arg     Additional argument to be passed to the callback function.
  */
 void debug_io_term_register_keyword(const char *keyword, debug_io_term_callback_t cb, void *arg);
+
+/**
+ * \brief Send data points to the debug IO scope.
+ */
+void debug_io_scope_push(void *datapoints, unsigned size);

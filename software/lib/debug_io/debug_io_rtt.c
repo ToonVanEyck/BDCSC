@@ -7,6 +7,9 @@
 
 #define DEBUG_IO_TERM_KEYWORD_MAX 10
 
+#define DEBUG_IO_BUFFER_TERMINAL (0) /* The RTT up buffer used by the terminal. */
+#define DEBUG_IO_BUFFER_SCOPE    (1) /* The RTT up buffer used by the scope. */
+
 static bool format_ended_in_newline = true;
 static log_lvl_t active_log_lvl     = LOG_DISBALED;
 static log_lvl_t prev_log_lvl       = LOG_DISBALED;
@@ -31,6 +34,16 @@ void debug_io_init(log_lvl_t log_lvl)
     SEGGER_RTT_Init();
 }
 
+void debug_io_scope_init(char *scope_format)
+{
+    static char JS_RTT_UpBuffer[512] = {0};
+    int ret = SEGGER_RTT_ConfigUpBuffer(DEBUG_IO_BUFFER_SCOPE, scope_format, &JS_RTT_UpBuffer[0],
+                                        sizeof(JS_RTT_UpBuffer), SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+    if (ret < 0) {
+        debug_io_log_error("SEGGER_RTT_ConfigUpBuffer failed with error code %d\n", ret);
+    }
+}
+
 int debug_io_get(void)
 {
     return SEGGER_RTT_GetKey();
@@ -42,7 +55,7 @@ void debug_io_log_debug(const char *fmt, ...)
         return;
     }
     if (format_ended_in_newline) {
-        SEGGER_RTT_Write(0, RTT_CTRL_TEXT_WHITE "D " RTT_CTRL_RESET, 14);
+        SEGGER_RTT_Write(DEBUG_IO_BUFFER_TERMINAL, RTT_CTRL_TEXT_WHITE "D " RTT_CTRL_RESET, 14);
     }
     format_ended_in_newline = format_end_in_newline(fmt);
     va_list args;
@@ -56,7 +69,7 @@ void debug_io_log_info(const char *fmt, ...)
         return;
     }
     if (format_ended_in_newline) {
-        SEGGER_RTT_Write(0, RTT_CTRL_TEXT_BRIGHT_CYAN "I " RTT_CTRL_RESET, 14);
+        SEGGER_RTT_Write(DEBUG_IO_BUFFER_TERMINAL, RTT_CTRL_TEXT_BRIGHT_CYAN "I " RTT_CTRL_RESET, 14);
     }
     format_ended_in_newline = format_end_in_newline(fmt);
     va_list args;
@@ -70,7 +83,7 @@ void debug_io_log_warn(const char *fmt, ...)
         return;
     }
     if (format_ended_in_newline) {
-        SEGGER_RTT_Write(0, RTT_CTRL_TEXT_BRIGHT_YELLOW "W " RTT_CTRL_RESET, 14);
+        SEGGER_RTT_Write(DEBUG_IO_BUFFER_TERMINAL, RTT_CTRL_TEXT_BRIGHT_YELLOW "W " RTT_CTRL_RESET, 14);
     }
     format_ended_in_newline = format_end_in_newline(fmt);
     va_list args;
@@ -84,7 +97,7 @@ void debug_io_log_error(const char *fmt, ...)
         return;
     }
     if (format_ended_in_newline) {
-        SEGGER_RTT_Write(0, RTT_CTRL_TEXT_BRIGHT_RED "E " RTT_CTRL_RESET, 14);
+        SEGGER_RTT_Write(DEBUG_IO_BUFFER_TERMINAL, RTT_CTRL_TEXT_BRIGHT_RED "E " RTT_CTRL_RESET, 14);
     }
     format_ended_in_newline = format_end_in_newline(fmt);
     va_list args;
@@ -164,4 +177,13 @@ void debug_io_term_register_keyword(const char *keyword, debug_io_term_callback_
             return;
         }
     }
+}
+
+void debug_io_scope_push(void *datapoints, unsigned size)
+{
+    if (size > BUFFER_SIZE_UP) {
+        debug_io_log_error("Data size exceeds buffer size.\n");
+        return;
+    }
+    SEGGER_RTT_Write(DEBUG_IO_BUFFER_SCOPE, datapoints, size);
 }
