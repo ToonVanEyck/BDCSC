@@ -1,0 +1,44 @@
+{
+    "stream_0": {
+        "name": "setpoint",
+        "color": "#1f77b4",
+        "scale": 5.0,
+        "offset": -1,
+        "visible": true
+    },
+    "stream_1": {
+        "name": "encoder",
+        "color": "#ff7f0e",
+        "scale": 5.0,
+        "offset": 0.0,
+        "visible": true
+    },
+    "stream_2": {
+        "name": "p error",
+        "color": "#2ca02c",
+        "scale": 0.001,
+        "offset": 0.0,
+        "visible": true
+    },
+    "stream_3": {
+        "name": "i error",
+        "color": "#d62728",
+        "scale": 0.001,
+        "offset": 0,
+        "visible": true
+    },
+    "stream_4": {
+        "name": "d error",
+        "color": "#9467bd",
+        "scale": 0.001,
+        "offset": 0.0,
+        "visible": true
+    },
+    "stream_5": {
+        "name": "pid error",
+        "color": "#8c564b",
+        "scale": 1.0,
+        "offset": 0,
+        "visible": true
+    }
+}

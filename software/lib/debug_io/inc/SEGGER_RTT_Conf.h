@@ -98,7 +98,7 @@ Revision: $Rev: 24316 $
 
 #ifndef BUFFER_SIZE_DOWN
 #define BUFFER_SIZE_DOWN                                                                                               \
-    (8) // Size of the buffer for terminal input to target from host (Usually keyboard input) (Default: 16)
+    (32) // Size of the buffer for terminal input to target from host (Usually keyboard input) (Default: 16)
 #endif
 
 #ifndef SEGGER_RTT_PRINTF_BUFFER_SIZE

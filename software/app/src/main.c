@@ -48,7 +48,7 @@ void debug_term_motor_position_set(const char *input, void *arg);
 void debug_term_motor_set_direction(const char *input, void *arg);
 void debug_term_encoder_toggle(const char *input, void *arg);
 void debug_term_pid_set(const char *input, void *arg);
-
+void debug_term_pid_print(const char *input, void *arg);
 /* Motor stuff */
 static motor_t debug_motor           = {0};
 static uint16_t debug_motor_position = 0; /**< Current motor position. */
@@ -65,8 +65,12 @@ pid_ctx_t pid_ctx = {0};
 
 /* Debug IO scope struct */
 typedef struct {
-    uint32_t encoder_value;
-    uint32_t dummy_value; // Placeholder for additional scope values
+    uint32_t setpoint;
+    uint32_t actual;
+    int32_t p;
+    int32_t i;
+    int32_t d;
+    int32_t error;
 } debug_io_scope_t;
 static debug_io_scope_t debug_io_scope = {0};
 
@@ -76,7 +80,7 @@ int main(void)
     BSP_HSI_24MHzClockConfig();
 
     debug_io_init(LOG_LVL_DEBUG);
-    debug_io_scope_init("u4u4");
+    debug_io_scope_init("u4u4i4i4i4i4");
 
     APP_GpioConfig();
     // APP_DmaInit();
@@ -92,17 +96,17 @@ int main(void)
     debug_io_term_register_keyword("mp", debug_term_motor_position_set, &debug_motor);
     debug_io_term_register_keyword("enc", debug_term_encoder_toggle, NULL);
     debug_io_term_register_keyword("pid", debug_term_pid_set, &pid_ctx);
+    debug_io_term_register_keyword("pe", debug_term_pid_print, &pid_ctx); /* Register the new function */
 
     debug_io_log_info("BDCSC dev board\n");
     debug_io_log_info("Version: %s\n", GIT_VERSION);
     debug_io_log_info("Compilation Date: %s %s\n", __DATE__, __TIME__);
 
-    pid_init(&pid_ctx, 600, 2, 0); // Initialize PID with kp=1, ki=0, kd=0
+    pid_init(&pid_ctx, 3000, 300, -800); // Initialize PID with kp=1, ki=0, kd=0
     while (1) {
 
         debug_io_term_process();
-        uint16_t encoder_count       = encoder_position_get();
-        debug_io_scope.encoder_value = encoder_count;
+        uint16_t encoder_count = encoder_position_get();
         if (encoder_count != prev_encoder_value) {
             prev_encoder_value = encoder_count;
             if (enable_encoder) {
@@ -112,29 +116,36 @@ int main(void)
 
         static uint32_t last_tick = 0;
         uint32_t current_tick     = HAL_GetTick();
-        if (current_tick - last_tick >= 100) { // every 10 ms
+        if (current_tick - last_tick >= 50) { // every 10 ms
             last_tick = current_tick;
-            // if (debug_motor.enable) {
-            //     pid_ctx.setpoint   = debug_motor_position / 6;
-            //     int16_t pid_output = pid_compute(&pid_ctx, encoder_count / 6);
-            //     if (pid_output > 0) {
-            //         debug_motor.direction_cw = true;
-            //         debug_motor.speed        = (uint8_t)(pid_output > 255 ? 255 : pid_output);
-            //     } else {
-            //         debug_motor.direction_cw = false;
-            //         debug_motor.speed        = (uint8_t)(-pid_output > 255 ? 255 : -pid_output);
-            //     }
-            //     if (debug_motor.speed < 10) {
-            //         debug_motor.speed = 0; // If speed is too low, stop the motor
-            //     }
-            //     if (encoder_count != prev_encoder_value) {
-            //         prev_encoder_value = encoder_count;
-            //         // debug_io_log_info("PID: %d, Speed: %u, Position: %u\n", pid_output, debug_motor.speed,
-            //         //                   encoder_count);
-            //     }
-            //     motor_update(&debug_motor);
-            // }
+            if (debug_motor.enable) {
+                pid_ctx.setpoint   = debug_motor_position / 6;
+                int16_t pid_output = pid_compute(&pid_ctx, encoder_count / 6);
+                if (pid_output > 0) {
+                    debug_motor.direction_cw = true;
+                    debug_motor.speed        = (uint8_t)(pid_output > 255 ? 255 : pid_output);
+                } else {
+                    debug_motor.direction_cw = false;
+                    debug_motor.speed        = (uint8_t)(-pid_output > 255 ? 255 : -pid_output);
+                }
+                if (debug_motor.speed < 10) {
+                    debug_motor.speed = 0; // If speed is too low, stop the motor
+                }
+                if (encoder_count != prev_encoder_value) {
+                    prev_encoder_value = encoder_count;
+                    // debug_io_log_info("PID: %d, Speed: %u, Position: %u\n", pid_output, debug_motor.speed,
+                    //                   encoder_count);
+                }
+                motor_update(&debug_motor);
+            }
             // debug_io_log_debug("Hello World!\n");
+            debug_io_scope.setpoint = pid_ctx.setpoint;
+            debug_io_scope.actual   = encoder_count / 6;
+            debug_io_scope.p        = pid_ctx.p_error;
+            debug_io_scope.i        = pid_ctx.i_error;
+            debug_io_scope.d        = pid_ctx.d_error;
+            debug_io_scope.error    = pid_ctx.output;
+
             debug_io_scope_push(&debug_io_scope, sizeof(debug_io_scope));
         }
     }
@@ -285,11 +296,11 @@ void APP_EncoderInit(void)
     sConfig.IC1Polarity             = TIM_ICPOLARITY_RISING;
     sConfig.IC1Selection            = TIM_ICSELECTION_DIRECTTI;
     sConfig.IC1Prescaler            = TIM_ICPSC_DIV1;
-    sConfig.IC1Filter               = 0;
+    sConfig.IC1Filter               = 10;
     sConfig.IC2Polarity             = TIM_ICPOLARITY_RISING;
     sConfig.IC2Selection            = TIM_ICSELECTION_DIRECTTI;
     sConfig.IC2Prescaler            = TIM_ICPSC_DIV1;
-    sConfig.IC2Filter               = 0;
+    sConfig.IC2Filter               = 10;
 
     if (HAL_TIM_Encoder_Init(&encoderHandle, &sConfig) != HAL_OK) {
         APP_ErrorHandler();
@@ -420,4 +431,19 @@ void debug_term_pid_set(const char *input, void *arg)
     } else {
         debug_io_log_info("Usage: pid <kp> <ki> <kd>\n");
     }
+}
+
+void debug_term_pid_print(const char *input, void *arg)
+{
+    pid_ctx_t *pid = (pid_ctx_t *)arg;
+
+    // Print all internal PID values for debugging
+    debug_io_log_info("PID Internal State:\n");
+    debug_io_log_info("  Gains: kp=%d, ki=%d, kd=%d\n", pid->kp, pid->ki, pid->kd);
+    debug_io_log_info("  Setpoint: %d, Current Input: %d\n", pid->setpoint, encoder_position_get() / 6);
+    debug_io_log_info("  Error: %d\n", pid->setpoint - (encoder_position_get() / 6));
+    debug_io_log_info("  P-term: %d\n", pid->p_error);
+    debug_io_log_info("  I-term: %d\n", pid->i_error);
+    debug_io_log_info("  D-term: %d\n", pid->d_error);
+    debug_io_log_info("  Output: %d\n", pid->output);
 }
