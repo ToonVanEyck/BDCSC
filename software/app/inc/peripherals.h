@@ -1,0 +1,106 @@
+/**
+ * \file peripherals.h
+ *
+ * Used Peripherals:
+ * - TIMER 1:
+ *   - CH1 Input Capture of COMP2 event (motor commutator pulses).
+ *   - CH3 & CH4 PWM output for motor control.
+ *   - Tick timer for the system.
+ * - TIMER 3: Quadrature encoder input.
+ * - COMPARATOR 2: Motor commutator pulses.
+ */
+
+#pragma once
+
+#include "py32f0xx_bsp_clock.h"
+#include "py32f0xx_ll_bus.h"
+#include "py32f0xx_ll_comp.h"
+#include "py32f0xx_ll_dma.h"
+#include "py32f0xx_ll_flash.h"
+#include "py32f0xx_ll_gpio.h"
+#include "py32f0xx_ll_tim.h"
+#include "py32f0xx_ll_utils.h"
+
+// /**
+//  * \defgroup Column-end detection pin definitions.
+//  * @{
+//  */
+// #define COLEND_GPIO_PIN  GPIO_PIN_1
+// #define COLEND_GPIO_PORT GPIOA
+// /**
+//  * @}
+//  */
+
+// /**
+//  * \defgroup Absolute encoder IR definitions.
+//  * @{
+//  */
+// #define ENCODER_CHANNEL_CNT (3) /**< Number of tracks on the encoder. */
+
+// #define ENCODER_CHANNEL_A (0) /**< Encoder Channel A. */
+// #define ENCODER_CHANNEL_B (2) /**< Encoder Channel B. */
+// #define ENCODER_CHANNEL_Z (1) /**< Encoder Channel Z. */
+
+// /** List of ADC channels used by the encoder. */
+// #define ENCODER_ADC_CHANNEL_LIST \
+//     ((uint32_t[ENCODER_CHANNEL_CNT]) { \
+//         ADC_CHANNEL_3, \
+//         ADC_CHANNEL_4, \
+//         ADC_CHANNEL_5, \
+//     })
+
+// #define ENCODER_ADC_GPIO_PINS (GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5) /**< The pins used for ADC by the encoder. */
+// #define ENCODER_ADC_GPIO_PORT (GPIOA)                                /**< ADC port. */
+// #define ENCODER_LED_GPIO_PIN  (GPIO_PIN_2) /**< Single pin driving the IR emitters of the IR sensors. */
+// #define ENCODER_LED_GPIO_PORT (GPIOA)      /**< IR emitter GPIO port. */
+// /**
+//  * @}
+//  */
+
+// /**
+//  * \defgroup Motor pin definitions.
+//  * @{
+//  */
+// #define MOTOR_GPIO_PORT (GPIOA)                   /**< Motor GPIO port. */
+// #define MOTOR_GPIO_PINS (GPIO_PIN_0 | GPIO_PIN_1) /**< Motor GPIO pins. */
+// /**
+//  * @}
+//  */
+
+// /**
+//  * \defgroup UART pin definitions.
+//  * @{
+//  */
+// #define UART_TX_GPIO_PIN (GPIO_PIN_6) /**< UART TX Pin. */
+// #define UART_RX_GPIO_PIN (GPIO_PIN_7) /**< UART RX Pin. */
+// #define UART_GPIO_PORT   (GPIOB)      /**< UART Port. */
+// /**
+//  * @}
+//  */
+
+// /**
+//  * \defgroup DEBUG pin definitions.
+//  * @{
+//  */
+// #define DEBUG_GPIO_1_PIN    (GPIO_PIN_1) /**< DEBUG 1 Pin. */
+// #define DEBUG_GPIO_2_PIN    (GPIO_PIN_0) /**< DEBUG 2 Pin. */
+// #define DEBUG_GPIO_3_PIN    (GPIO_PIN_6) /**< DEBUG 3 Pin. */
+// #define DEBUG_GPIO_4_PIN    (GPIO_PIN_7) /**< DEBUG 6 Pin. */
+// #define DEBUG_GPIO_1_2_PORT (GPIOF)      /**< DEBUG Port. */
+// #define DEBUG_GPIO_3_4_PORT (GPIOB)      /**< DEBUG Port. */
+
+// /**
+//  * @}
+//  */
+
+/**
+ * @brief Initializes all peripherals.
+ */
+void peripherals_init(void);
+
+/**
+ * @brief Deinitializes all peripherals.
+ *
+ * @note This function is not implemented.
+ */
+void peripherals_deinit(void);

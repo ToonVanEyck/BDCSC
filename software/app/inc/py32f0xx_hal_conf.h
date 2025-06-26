@@ -39,7 +39,7 @@ extern "C" {
 #define HAL_RCC_MODULE_ENABLED
 #define HAL_ADC_MODULE_ENABLED
 #define HAL_CRC_MODULE_ENABLED
-/* #define HAL_COMP_MODULE_ENABLED */
+#define HAL_COMP_MODULE_ENABLED
 #define HAL_FLASH_MODULE_ENABLED
 #define HAL_GPIO_MODULE_ENABLED
 /* #define HAL_IWDG_MODULE_ENABLED */
@@ -53,7 +53,7 @@ extern "C" {
 /* #define HAL_SPI_MODULE_ENABLED */
 /* #define HAL_RTC_MODULE_ENABLED */
 /* #define HAL_LED_MODULE_ENABLED */
-/* #define HAL_EXTI_MODULE_ENABLED */
+#define HAL_EXTI_MODULE_ENABLED
 #define HAL_CORTEX_MODULE_ENABLED
 
 /* ########################## Oscillator Values adaptation ####################*/

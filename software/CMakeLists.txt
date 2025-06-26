@@ -17,9 +17,9 @@ set(DEBUG_IO_RTT_BACKEND 1 CACHE BOOL "Use RTT as debug input output backend")
 # Include the libraries
 add_subdirectory(lib)
 
-# Include Puya BSP
-target_include_directories(PuyaBSP PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/app/inc)
-target_include_directories(PuyaBSP PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/btl/inc)
+# # Include Puya BSP
+# target_include_directories(puya_ll PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/app/inc)
+# target_include_directories(puya_ll PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/btl/inc)
 
 set(App ${PROJECT_NAME}_App)
 set(Btl ${PROJECT_NAME}_Btl)
@@ -37,17 +37,6 @@ add_custom_command(OUTPUT ${PROJECT_NAME}_BtlAppCfg.hex
     DEPENDS ${App} ${Btl}
     )
 add_custom_target(BtlAppCfg_hex ALL DEPENDS ${PROJECT_NAME}_BtlAppCfg.hex)
-
-# add_custom_command(OUTPUT ${PROJECT_NAME}_AppApp.hex
-#     COMMENT "Duplicating Application with offset"
-#     COMMAND srec_cat 
-#             bin/${PROJECT_NAME}_App.hex -Intel 
-#             -offset 0x7000
-#             bin/${PROJECT_NAME}_App.hex -Intel 
-#             -o bin/${PROJECT_NAME}_AppApp.hex -Intel -line-length=44
-#     DEPENDS ${App} ${Btl}
-#     )
-# add_custom_target(AppApp_hex ALL DEPENDS ${PROJECT_NAME}_AppApp.hex)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L ${CMAKE_SOURCE_DIR}" CACHE INTERNAL "Linker options")
 

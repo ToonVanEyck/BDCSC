@@ -12,10 +12,8 @@ void pid_init(pid_ctx_t *pid, int32_t kp, int32_t ki, int32_t kd)
     pid->o_max          = 10000;
 }
 
-int32_t pid_compute(pid_ctx_t *pid, int32_t measured_value)
+int32_t pid_compute(pid_ctx_t *pid, int32_t error)
 {
-    int32_t error = pid->setpoint - measured_value;
-
     // Calculate new integral with error
     if (error == 0) {
         pid->integral = pid->integral * 99 / 100; // Natural decay of integral term
@@ -29,8 +27,8 @@ int32_t pid_compute(pid_ctx_t *pid, int32_t measured_value)
     pid->i_error = (pid->ki * pid->integral);
     pid->d_error = (pid->kd * derivative);
 
-    int32_t o_max = (-5 < error && error < 5) ? pid->o_max * 5 : pid->o_max;
-    int32_t o_min = (-5 < error && error < 5) ? pid->o_min * 5 : pid->o_min;
+    int32_t o_max = (-5 < error && error < 5) ? (pid->o_max * 5) : (pid->o_max * 1);
+    int32_t o_min = (-5 < error && error < 5) ? (pid->o_min * 5) : (pid->o_min * 1);
 
     // Anti-windup: Check scaled integral value against limits
     if (pid->i_error > o_max) {
@@ -43,12 +41,6 @@ int32_t pid_compute(pid_ctx_t *pid, int32_t measured_value)
     pid->i_error = (pid->ki * pid->integral);
 
     pid->output = (pid->p_error + pid->i_error + pid->d_error) / 1000;
-
-    if (pid->output > pid->o_max) {
-        pid->output = pid->o_max; // Limit output to max PWM value
-    } else if (pid->output < pid->o_min) {
-        pid->output = pid->o_min; // Limit output to min PWM value
-    }
 
     return pid->output;
 }

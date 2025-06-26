@@ -22,7 +22,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "py32f0xx_it.h"
-#include "py32f0xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
@@ -32,8 +31,8 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private user code ---------------------------------------------------------*/
 /* External variables --------------------------------------------------------*/
-extern ADC_HandleTypeDef AdcHandle;
-extern TIM_HandleTypeDef Tim1Handle;
+// extern ADC_HandleTypeDef AdcHandle;
+// extern TIM_HandleTypeDef Tim1Handle;
 
 /******************************************************************************/
 /*          Cortex-M0+ Processor Interruption and Exception Handlers          */
@@ -73,7 +72,6 @@ void PendSV_Handler(void)
  */
 void SysTick_Handler(void)
 {
-    HAL_IncTick();
 }
 
 /******************************************************************************/
@@ -85,17 +83,17 @@ void SysTick_Handler(void)
 
 void ADC_COMP_IRQHandler(void)
 {
-    HAL_ADC_IRQHandler(&AdcHandle);
+    // HAL_ADC_IRQHandler(&AdcHandle);
 }
 
-// void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
-// {
-//     HAL_TIM_IRQHandler(&Tim1Handle);
-// }
+void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
+{
+    // HAL_TIM_IRQHandler(&Tim1Handle);
+}
 
 void DMA1_Channel1_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
+    // HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
 }
 
 /************************ (C) COPYRIGHT Puya *****END OF FILE******************/

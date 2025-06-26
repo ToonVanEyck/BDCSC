@@ -20,4 +20,4 @@ typedef struct {
 
 void pid_init(pid_ctx_t *pid, int32_t kp, int32_t ki, int32_t kd);
 
-int32_t pid_compute(pid_ctx_t *pid, int32_t measured_value);
+int32_t pid_compute(pid_ctx_t *pid, int32_t error);

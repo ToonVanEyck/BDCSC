@@ -2,8 +2,4 @@
 #include "pid.h"
 #include "platform.h"
 
-#ifndef GIT_VERSION
-#define GIT_VERSION "undefined"
-#endif
-
-extern TIM_HandleTypeDef motorPwmHandle;
+// extern TIM_HandleTypeDef Tim1Handle;

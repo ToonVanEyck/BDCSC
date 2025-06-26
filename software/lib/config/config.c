@@ -1,7 +1,9 @@
 #include "config.h"
 #include "debug_io.h"
 #include "flash.h"
-#include "memory_map.h"
+
+extern uint32_t __FLASH_NVS_START__;
+#define NVS_START_ADDR ((uint32_t)&__FLASH_NVS_START__)
 
 void configLoad(nvs_config_t *config)
 {
