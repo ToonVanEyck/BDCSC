@@ -4,9 +4,11 @@
             "name": "Linux",
             "includePath": [
                 "${default}",
-                "${workspaceFolder}/software/**",
+                "${workspaceFolder}/software/**"
             ],
-            "defines": [],
+            "defines": [
+                "__GIT_VERSION__=\"set at compile time\"",
+            ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c17",
             "cppStandard": "gnu++17",

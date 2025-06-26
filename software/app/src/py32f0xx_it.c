@@ -22,7 +22,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "py32f0xx_it.h"
-#include "py32f0xx_hal.h"
+#include "peripherals.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
@@ -32,8 +32,7 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private user code ---------------------------------------------------------*/
 /* External variables --------------------------------------------------------*/
-extern ADC_HandleTypeDef AdcHandle;
-extern TIM_HandleTypeDef Tim1Handle;
+extern uint32_t tim1_tick_count; /**< Counter for TIM1 update events. */
 
 /******************************************************************************/
 /*          Cortex-M0+ Processor Interruption and Exception Handlers          */
@@ -73,7 +72,6 @@ void PendSV_Handler(void)
  */
 void SysTick_Handler(void)
 {
-    HAL_IncTick();
 }
 
 /******************************************************************************/
@@ -83,19 +81,32 @@ void SysTick_Handler(void)
 /* please refer to the startup file.                                          */
 /******************************************************************************/
 
-void ADC_COMP_IRQHandler(void)
+void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
 {
-    HAL_ADC_IRQHandler(&AdcHandle);
+    /* Clear the TIM1 update interrupt flag */
+    if (LL_TIM_IsActiveFlag_UPDATE(TIM1)) {
+        LL_TIM_ClearFlag_UPDATE(TIM1);
+        tim1_tick_count++; // Increment the tick count on each update event
+        // debug_pin_toggle(2);
+    }
 }
 
-// void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
-// {
-//     HAL_TIM_IRQHandler(&Tim1Handle);
-// }
+void TIM1_CC_IRQHandler(void)
+{
+    /* Clear the TIM1 capture/compare interrupt flag */
+    if (LL_TIM_IsActiveFlag_CC1(TIM1)) {
+        LL_TIM_ClearFlag_CC1(TIM1);
+        debug_pin_toggle(3);
+    }
+}
 
 void DMA1_Channel1_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(AdcHandle.DMA_Handle);
+    /* Clear the transfer complete flag */
+    if (LL_DMA_IsActiveFlag_TC1(DMA1)) {
+        LL_DMA_ClearFlag_TC1(DMA1);
+        debug_pin_toggle(2);
+    }
 }
 
 /************************ (C) COPYRIGHT Puya *****END OF FILE******************/

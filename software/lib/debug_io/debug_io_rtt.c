@@ -38,7 +38,7 @@ void debug_io_scope_init(char *scope_format)
 {
     static char JS_RTT_UpBuffer[512] = {0};
     int ret = SEGGER_RTT_ConfigUpBuffer(DEBUG_IO_BUFFER_SCOPE, scope_format, &JS_RTT_UpBuffer[0],
-                                        sizeof(JS_RTT_UpBuffer), SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+                                        sizeof(JS_RTT_UpBuffer), SEGGER_RTT_MODE_NO_BLOCK_SKIP);
     if (ret < 0) {
         debug_io_log_error("SEGGER_RTT_ConfigUpBuffer failed with error code %d\n", ret);
     }

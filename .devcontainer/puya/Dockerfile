@@ -19,6 +19,11 @@ RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.d
 # Install figlet font
 RUN cd /usr/share/figlet && wget https://raw.githubusercontent.com/xero/figlet-fonts/master/3d.flf
 
+# Install Unity testing framework v2.6.1
+RUN cd /opt && \
+    git clone --depth 1 --branch v2.6.1 https://github.com/ThrowTheSwitch/Unity.git unity && \
+    chown -R root:root unity/
+
 # Change user name from vscode to BDCSC
 RUN usermod -l ${NEW_USER} ${ORIGINAL_USER} && \
     groupmod -n ${NEW_USER} ${ORIGINAL_USER} && \
@@ -39,11 +44,11 @@ WORKDIR /tmp
 RUN ln -s /usr/bin/gdb-multiarch /usr/bin/arm-none-eabi-gdb
 
 # Install lib ncurses5
-RUN apt install -y libncurses5
+RUN apt update && apt install -y libncurses5
 RUN ln -s libncursesw.so.6.3 /usr/lib/x86_64-linux-gnu/libncursesw.so.5
 
 # install pyocd
-RUN apt -y install python3 python3-pip netcat && \
+RUN apt update && apt -y install python3 python3-pip netcat && \
     python3 -mpip install -U pyocd && \
     wget https://www.python.org/ftp/python/3.8.12/Python-3.8.12.tgz && \
     tar xzf Python-3.8.12.tgz && \
